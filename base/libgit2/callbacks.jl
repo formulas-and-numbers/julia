@@ -42,10 +42,16 @@ end
 function user_abort()
     # Note: Potentially it could be better to just throw a Julia error.
     ccall((:giterr_set_str, :libgit2), Void,
-          (Cint, Cstring),
-          Cint(Error.Callback), "Aborting, user cancelled credential request.")
-
+          (Cint, Cstring), Cint(Error.Callback),
+          "Aborting, user cancelled credential request.")
     return Cint(Error.EUSER)
+end
+
+function prompt_limit()
+    ccall((:giterr_set_str, :libgit2), Void,
+          (Cint, Cstring), Cint(Error.Callback),
+          "Aborting, maximum number of prompts reached.")
+    return Cint(Error.EAUTH)
 end
 
 function authenticate_ssh(libgit2credptr::Ptr{Ptr{Void}}, p::CredentialPayload, username_ptr)
@@ -99,7 +105,7 @@ function authenticate_ssh(libgit2credptr::Ptr{Ptr{Void}}, p::CredentialPayload, 
         )
     end
 
-    if p.allow_prompt && (!modified || !isfilled(creds))
+    if p.remaining_prompts > 0 && (!modified || !isfilled(creds))
         # if username is not provided or empty, then prompt for it
         username = username_ptr != Cstring(C_NULL) ? unsafe_string(username_ptr) : ""
         if isempty(username)
@@ -154,6 +160,9 @@ function authenticate_ssh(libgit2credptr::Ptr{Ptr{Void}}, p::CredentialPayload, 
         end
 
         modified = true
+
+        p.remaining_prompts -= 1
+        p.remaining_prompts <= 0 && return prompt_limit()
     end
 
     if !modified
@@ -178,7 +187,7 @@ function authenticate_userpass(libgit2credptr::Ptr{Ptr{Void}}, p::CredentialPayl
         modified = true
     end
 
-    if p.allow_prompt && (!modified || !isfilled(creds))
+    if p.remaining_prompts > 0 && (!modified || !isfilled(creds))
         prompt_url = git_url(scheme=p.scheme, host=p.host)
         if Sys.iswindows()
             response = Base.winprompt(
@@ -200,6 +209,9 @@ function authenticate_userpass(libgit2credptr::Ptr{Ptr{Void}}, p::CredentialPayl
         end
 
         modified = true
+
+        p.remaining_prompts -= 1
+        p.remaining_prompts <= 0 && return prompt_limit()
     end
 
     if !modified
