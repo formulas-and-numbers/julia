@@ -1683,8 +1683,8 @@ mktempdir() do dir
             "authentication methods.")
 
         eauth_error = LibGit2.GitError(
-            LibGit2.Error.None, LibGit2.Error.EAUTH,
-            "No errors")
+            LibGit2.Error.Callback, LibGit2.Error.EAUTH,
+            "All authentication methods have failed.")
 
         @testset "SSH credential prompt" begin
             url = "git@github.com:test/package.jl"
