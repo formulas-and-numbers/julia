@@ -125,7 +125,7 @@ function authenticate_ssh(libgit2credptr::Ptr{Ptr{Void}}, p::CredentialPayload, 
             response = Base.prompt("Private key location for '$prompt_url'",
                 default=creds.prvkey)
             isnull(response) && return user_abort()
-            creds.prvkey = unsafe_get(response)
+            creds.prvkey = expanduser(unsafe_get(response))
 
             # Only update the public key if the private key changed
             if creds.prvkey != last_private_key
@@ -140,7 +140,7 @@ function authenticate_ssh(libgit2credptr::Ptr{Ptr{Void}}, p::CredentialPayload, 
             response = Base.prompt("Public key location for '$prompt_url'",
                 default=creds.pubkey)
             isnull(response) && return user_abort()
-            creds.pubkey = unsafe_get(response)
+            creds.pubkey = expanduser(unsafe_get(response))
         end
 
         # Ask for a passphrase when the private key exists and requires a passphrase
