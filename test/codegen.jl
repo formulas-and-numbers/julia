@@ -188,6 +188,13 @@ function two_breakpoint(a::Float64)
     ccall(:jl_breakpoint, Void, (Ref{Float64},), a)
 end
 
+function load_dummy_ref(x::Int)
+    r = Ref{Int}(x)
+    Base.@gc_preserve r begin
+        unsafe_load(Ptr{Int}(pointer_from_objref(r)))
+    end
+end
+
 if opt_level > 0
     breakpoint_f64_ir = get_llvm((a)->ccall(:jl_breakpoint, Void, (Ref{Float64},), a),
                                  Tuple{Float64})
@@ -198,6 +205,8 @@ if opt_level > 0
     two_breakpoint_ir = get_llvm(two_breakpoint, Tuple{Float64})
     @test !contains(two_breakpoint_ir, "jl_gc_pool_alloc")
     @test contains(two_breakpoint_ir, "llvm.lifetime.end")
+
+    @test load_dummy_ref(1234) === 1234
 end
 
 # Issue 22770
